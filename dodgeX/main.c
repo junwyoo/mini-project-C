@@ -1,8 +1,7 @@
+// created by Junwhan Yoo
+// 2018.10
 #include <stdio.h>
-
 #include "dodgeX.h"
-
-
 
 int charToInt(char c);
 int max(int a, int b);
@@ -15,10 +14,8 @@ Position generateEnemy(char* map);
 int gameOver();
 
 int main(){
-
 	int i;
 	int dead; // GAME OVER if 1
-
 
 	char map[ROW][COL];
 	Position user = {ROW/2, COL/2};
@@ -58,11 +55,9 @@ int main(){
 				}
 
 				dead = moveCh(menuChoice, &user, &map[0][0]) || renderEnemy(&map[0][0], &enemies[0], user);
-
 			}
 		puts("Re-rendering...");
 	}
-
 	return 0;
 }
 
