@@ -1,17 +1,10 @@
 #include <stdio.h>
-#include <stdlib.h> // srand()
-#include <time.h> // time()
 
-#define ROW 10
-#define COL 40
-#define OBSTACLE 10
-#define ENEMY 3
+#include "dodgeX.h"
 
-typedef struct{
-	int x;
-	int y;
-}Position;
 
+
+int charToInt(char c);
 int max(int a, int b);
 void renderMap(char* map);
 void displayMap(char* map);
@@ -36,7 +29,10 @@ int main(){
 		srand(time(NULL)); // random seed
 		dead = 0;
 		renderMap(&map[0][0]);
+		user.x = ROW/2;
+		user.y = COL/2;
 		map[user.x][user.y] = 'o'; //initial position
+
 		for(i=0; i<ENEMY; i++){  // generate enemies
 			enemies[i] = generateEnemy(&map[0][0]);
 		}
@@ -57,7 +53,8 @@ int main(){
 				if(menuChoice < 1 || menuChoice > 5){
 					printf("\r잘못 입력하셨습니다.\n");
 				}else if(menuChoice == 5){
-					return 0;
+					dead = 1;
+					continue;
 				}
 
 				dead = moveCh(menuChoice, &user, &map[0][0]) || renderEnemy(&map[0][0], &enemies[0], user);
@@ -67,12 +64,6 @@ int main(){
 	}
 
 	return 0;
-}
-
-int max(int a, int b){
-	if(a>b)
-		return a;
-	return b;
 }
 
 void renderMap(char * map){
@@ -91,8 +82,11 @@ void renderMap(char * map){
 
 	// obstacle
 	for(i=0; i<OBSTACLE; i++){
-		x = rand()%(ROW-2);
-		y = rand()%(COL-2);
+		do{
+			x = rand()%(ROW-2);
+			y = rand()%(COL-2);
+		}while(((x == ROW/2) && (y == COL/2)) || *(map+(COL)*x+y) == '*'); // user or obstacle
+
 		*(map+(COL)*x+y) = '*';
 	}
 	return;
@@ -109,45 +103,101 @@ void displayMap(char* map){
 }
 
 int showMenu(){
-	int ret = 0;
+	char input;
 	while(1){
-		printf("\r[왼쪽 : 1] [오른쪽 : 2] [위 : 3] [아래 : 4] [종료 : 5] : ");
-		scanf(" %d", &ret);
-		if( ret<1 || ret>5 )
+		printf("\r[왼쪽 : 1, a] [오른쪽 : 2, d] [위 : 3, w] [아래 : 4, s] [자살 : 5] : ");
+		fflush(stdin);
+		input = getchar();
+
+		if(input == 'a')
+			return 1;
+		if(input == 's')
+			return 4;
+		if(input == 'd')
+			return 2;
+		if(input == 'w')
+			return 3;
+
+		if( input<'1' || input>'5' ){
+			fflush(stdin);
 			return -1;
+		}
 		else
 			break;
 	}
-	return ret;
+	return input-48;
 }
 
 int moveCh(int command, Position* ch, char* map){
 	int user = 0;
+	int infFlag;
 	if(*(map+COL*(ch->x)+ch->y) == 'o')
 		user = 1; // user
 
 	*(map+COL*(ch->x)+ch->y) = '.';
-
-	if(command == 1){
-		if(*(map+COL*(ch->x)+ch->y-1) != '*')
-			ch->y -= 1;
-	}else if(command==2){
-		if(*(map+COL*(ch->x)+ch->y+1) != '*')
-			ch->y += 1;
-	}else if(command==3){
-		if(*(map+COL*(ch->x-1)+ch->y) != '*')
-			ch->x -= 1;
-	}else if(command==4){
-		if(*(map+COL*(ch->x+1)+ch->y-1) != '*')
-			ch->x += 1;
+	if(user){
+		if(command == 1){
+			if(*(map+COL*(ch->x)+ch->y-1) != '*')
+				ch->y -= 1;
+		}else if(command==2){
+			if(*(map+COL*(ch->x)+ch->y+1) != '*')
+				ch->y += 1;
+		}else if(command==3){
+			if(*(map+COL*(ch->x-1)+ch->y) != '*')
+				ch->x -= 1;
+		}else if(command==4){
+			if(*(map+COL*(ch->x+1)+ch->y-1) != '*')
+				ch->x += 1;
+		}
+	} else{
+		infFlag = 0;
+		while(1){
+			if(command == 1){
+				if(*(map+COL*(ch->x)+ch->y-1) != '*'){
+					ch->y -= 1;
+					break;
+				}
+				command = 2;
+				infFlag++;
+			}else if(command==2){
+				if(*(map+COL*(ch->x)+ch->y+1) != '*'){
+					ch->y += 1;
+					break;
+				}
+				command = 3;
+				infFlag++;
+			}else if(command==3){
+				if(*(map+COL*(ch->x-1)+ch->y) != '*'){
+					ch->x -= 1;
+					break;
+				}
+				command = 4;
+				infFlag++;
+			}else if(command==4){
+				if(*(map+COL*(ch->x+1)+ch->y-1) != '*'){
+					ch->x += 1;
+					break;
+				}
+				command = 1;
+				infFlag++;
+			}
+			if(infFlag > 3){
+				infFlag = 0;
+				break;
+			}
+		}
 	}
-
+	//DEBUG PURPOSE
+	if(*(map+COL*(ch->x)+ch->y) == '*'){ // on obstacle
+		*(map+COL*(ch->x)+ch->y) = '$';
+		return 0;
+	}
 	if(user)
 		if(*(map+COL*(ch->x)+ch->y) == 'x')
 			return 1;
 		else
 			*(map+COL*(ch->x)+ch->y) = 'o';
-	else{
+	else{ //enemy
 		if(*(map+COL*(ch->x)+ch->y) == 'o')
 			return 1;
 		else
@@ -156,34 +206,7 @@ int moveCh(int command, Position* ch, char* map){
 	return 0;
 }
 
-int renderEnemy(char* map, Position *enemies, Position user){
-	int i;
-	int x_diff;
-	int y_diff;
-	for(i = 0; i < ENEMY; i++){
-		x_diff = enemies[i].x - user.x;
-		y_diff = enemies[i].y - user.y;
-		// Hard version
-		if(abs(y_diff) > abs(x_diff)){
-			if(y_diff >0)
 
-				moveCh(1, &enemies[i], map);
-			else
-
-				moveCh(2, &enemies[i], map);
-		}else{
-			if(x_diff >0)
-
-				moveCh(3, &enemies[i], map);
-			else
-
-				moveCh(4, &enemies[i], map);
-		}
-		if(enemies[i].x == user.x && enemies[i].y == user.y)
-			return 1;
-	}
-	return 0;
-}
 
 Position generateEnemy(char* map){
 	Position enemy= {0, 0};
@@ -208,4 +231,10 @@ int gameOver(){
 		return 1;
 	else
 		return 0;
+}
+
+int max(int a, int b){
+	if(a>b)
+		return a;
+	return b;
 }
